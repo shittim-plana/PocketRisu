@@ -9,6 +9,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build --sourcemap",
+    "build:android-local": "VITE_TARGET=android-local vite build --sourcemap",
+    "android:prepare:geckoview": "node scripts/android/prepare-geckoview.mjs",
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "check:help": "node scripts/check-help-keys.mjs",

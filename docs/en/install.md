@@ -4,12 +4,13 @@
 
 # Installation Guide
 
-PocketRisu can be installed in four ways.
+PocketRisu can be installed in five ways.
 
 - [1. Portable Package](#1-portable-package) — Pre-compiled binary. No Node.js required.
 - [2. Docker](#2-docker) — Container environment.
 - [3. Install Script](#3-install-script) — Automatic build from source. For Linux/macOS servers.
 - [4. Git Clone](#4-git-clone) — Manual source build. For developers / advanced users.
+- [5. Android Local APK](#5-android-local-apk) — `tauri-geckoview-template` wrapper with embedded frontend assets.
 
 
 ## System Requirements
@@ -214,6 +215,17 @@ pnpm build
 # Restart server
 pnpm runserver
 ```
+
+
+---
+
+## 5. Android Local APK
+
+For local Android packaging with `tauri-geckoview-template`, follow:
+
+- [Android local APK guide](./android-local-apk.md)
+
+This mode embeds frontend assets (`dist/`) into the Android app and does not include the Node server runtime by default.
 
 
 ---
