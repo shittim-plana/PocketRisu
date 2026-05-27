@@ -3,6 +3,7 @@
 
 
 declare const __APP_VERSION__: string
+declare const __ANDROID_LOCAL_APK__: boolean
 declare var Buffer: BufferConstructor
 declare var safeStructuredClone: <T>(data: T) => T
 declare var userScriptFetch: (url: string,arg:RequestInit) => Promise<Response>

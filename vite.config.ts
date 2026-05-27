@@ -9,9 +9,11 @@ const pkg = JSON.parse(readFileSync('./package.json', 'utf-8'));
 
 // https://vitejs.dev/config/
 export default defineConfig(({command, mode}) => {
+  const isAndroidLocalTarget = process.env.VITE_TARGET === 'android-local';
   return {
     define: {
       '__APP_VERSION__': JSON.stringify(pkg.version),
+      '__ANDROID_LOCAL_APK__': JSON.stringify(isAndroidLocalTarget),
     },
     plugins: [
       svelte({
