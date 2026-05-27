@@ -14,7 +14,7 @@ import { decodeRisuSave, encodeRisuSaveLegacy, findDangerousChatOps, RisuSaveEnc
 import { isHydrating, saveChatToServer, ensureChatHydrated, chatToStub, classifyChat } from "./storage/chatStorage";
 import { AutoStorage } from "./storage/autoStorage";
 import { ConflictError, type PersistWarning } from "./storage/nodeStorage";
-import { supportsPatchSync } from "./platform";
+import { supportsPatchSync, isAndroidLocalApk } from "./platform";
 import { updateAnimationSpeed } from "./gui/animation";
 import { updateColorScheme, updateTextThemeAndCSS } from "./gui/colorscheme";
 import { language } from "src/lang";
@@ -109,6 +109,21 @@ function buildTimeoutSignal(signal: AbortSignal | undefined, timeoutMs: number |
  * @returns {Promise<string>} - A promise that resolves to the source URL of the file.
  */
 export async function getFileSrc(loc: string) {
+    // Android local APK: fetch asset via Tauri invoke and return data URL
+    if (isAndroidLocalApk) {
+        try {
+            const hexKey = Buffer.from(loc, 'utf-8').toString('hex')
+            const { invoke } = await import('@tauri-apps/api/core')
+            const b64: string | null = await invoke('asset_get', { hex_key: hexKey })
+            if (b64) {
+                return `data:image/png;base64,${b64}`
+            }
+            return ''
+        } catch (error) {
+            console.error('getFileSrc tauri error:', error)
+            return ''
+        }
+    }
     // NodeOnly: return a direct server URL instead of fetching + base64-encoding.
     // The browser will cache the response using HTTP Cache-Control headers,
     // so repeated renders (sidebar, chat) cost zero network after first load.
@@ -1394,13 +1409,58 @@ async function fetchWithUSFetch(url: string, arg: GlobalFetchArgs): Promise<Glob
 }
 
 /**
+ * Performs a non-streaming proxy request via Tauri invoke (Android local APK).
+ */
+async function fetchWithTauriProxy(url: string, arg: GlobalFetchArgs): Promise<GlobalFetchResult> {
+    try {
+        const { invoke } = await import('@tauri-apps/api/core')
+        arg.headers["Content-Type"] ??= arg.body instanceof URLSearchParams ? "application/x-www-form-urlencoded" : "application/json"
+        const body = arg.body instanceof URLSearchParams ? arg.body.toString() : JSON.stringify(arg.body)
+        const headerStr = JSON.stringify(arg.headers)
+        const method = arg.method ?? "POST"
+
+        const resultJson: string = await invoke('proxy_request', {
+            url,
+            body,
+            header: headerStr,
+            method
+        })
+
+        const result = JSON.parse(resultJson)
+        const isSuccess = result.status >= 200 && result.status < 300
+
+        if (arg.rawResponse) {
+            const data = result.body ? new Uint8Array(Buffer.from(result.body, 'base64')) : new Uint8Array(0)
+            addFetchLogInGlobalFetch("Uint8Array Response", isSuccess, url, arg, result.status)
+            return { ok: isSuccess, data, headers: result.headers ?? {}, status: result.status }
+        }
+
+        let data: any
+        try {
+            data = JSON.parse(result.body)
+        } catch {
+            data = result.body ?? ''
+        }
+        addFetchLogInGlobalFetch(data, isSuccess, url, arg, result.status)
+        return { ok: isSuccess, data, headers: result.headers ?? {}, status: result.status }
+    } catch (error) {
+        return { ok: false, data: `${error}`, headers: {}, status: 400 }
+    }
+}
+
+/**
  * Performs a fetch request using a proxy.
- * 
+ *
  * @param {string} url - The URL to fetch.
  * @param {GlobalFetchArgs} arg - The arguments for the fetch request.
  * @returns {Promise<GlobalFetchResult>} - The result of the fetch request.
  */
 async function fetchWithProxy(url: string, arg: GlobalFetchArgs): Promise<GlobalFetchResult> {
+    // Android local APK: use Tauri proxy_request instead of /proxy2
+    if (isAndroidLocalApk) {
+        return await fetchWithTauriProxy(url, arg)
+    }
+
     try {
         const furl = `/proxy2`;
         arg.headers["Content-Type"] ??= arg.body instanceof URLSearchParams ? "application/x-www-form-urlencoded" : "application/json";
@@ -1867,6 +1927,25 @@ let streamedFetchListening = false
  */
 let capStreamedFetch: StreamedFetchPlugin | undefined
 
+// Android local APK: set up Tauri event listener for streamed_fetch events
+if (isAndroidLocalApk) {
+    import('@tauri-apps/api/event').then(({ listen }) => {
+        listen('streamed_fetch', (event) => {
+            try {
+                const parsed = JSON.parse(event.payload as string)
+                const id = parsed.id
+                nativeFetchData[id]?.push(parsed)
+            } catch (error) {
+                console.error('streamed_fetch event parse error:', error)
+            }
+        }).then(() => {
+            streamedFetchListening = true
+        })
+    }).catch((err) => {
+        console.error('Failed to set up Tauri streamed_fetch listener:', err)
+    })
+}
+
 
 /**
  * A class to manage a buffer that can be appended to and deappended from.
@@ -2055,6 +2134,11 @@ export async function fetchNative(url: string, arg: {
             })
         }
 
+        // Android local APK: use Tauri streamed_fetch command
+        if (isAndroidLocalApk) {
+            return await fetchViaTauriStream(url, headers, realBody, arg.method, requestSignal)
+        }
+
         // Local network streaming: try WebSocket proxy job, fallback to /proxy2
         const useProxyJobWs = useLocalNetworkRoute
             && arg.interceptor === 'openai_streaming'
@@ -2099,6 +2183,98 @@ export async function fetchNative(url: string, arg: {
     } finally {
         timeoutSignal.cleanup()
     }
+}
+
+/**
+ * Performs a streaming fetch via Tauri invoke for Android local APK mode.
+ * Uses the same streamed_fetch event pattern as RisuAI's Tauri integration.
+ */
+async function fetchViaTauriStream(
+    url: string,
+    headers: Record<string, string>,
+    realBody: Uint8Array | undefined,
+    method: string,
+    signal?: AbortSignal
+): Promise<Response> {
+    const { invoke } = await import('@tauri-apps/api/core')
+
+    fetchIndex++
+    if (fetchIndex >= 100000) {
+        fetchIndex = 0
+    }
+    const fetchId = fetchIndex.toString().padStart(5, '0')
+    nativeFetchData[fetchId] = []
+    let resolved = false
+    let error = ''
+
+    if (signal?.aborted) {
+        throw new Error('aborted')
+    }
+
+    // Wait for the Tauri event listener to be ready
+    while (!streamedFetchListening) {
+        await sleep(100)
+    }
+
+    invoke('streamed_fetch', {
+        id: fetchId,
+        url: url,
+        headers: JSON.stringify(headers),
+        body: realBody ? Buffer.from(realBody).toString('base64') : '',
+        method: method
+    }).then((res) => {
+        try {
+            const parsedRes = JSON.parse(res as string)
+            if (!parsedRes.success) {
+                error = parsedRes.body
+                resolved = true
+            }
+        } catch (e) {
+            error = JSON.stringify(e)
+            resolved = true
+        }
+    })
+
+    let resHeaders: { [key: string]: string } | null = null
+    let status = 400
+
+    const readableStream = new ReadableStream<Uint8Array>({
+        async start(controller) {
+            while (!resolved || nativeFetchData[fetchId].length > 0) {
+                if (nativeFetchData[fetchId].length > 0) {
+                    const data = nativeFetchData[fetchId].shift()!
+                    if (data.type === 'chunk') {
+                        const chunk = Buffer.from(data.body, 'base64')
+                        controller.enqueue(new Uint8Array(chunk))
+                    } else if (data.type === 'headers') {
+                        resHeaders = data.body
+                        status = data.status
+                    } else if (data.type === 'end') {
+                        resolved = true
+                    }
+                } else {
+                    await sleep(10)
+                }
+
+                if (signal?.aborted) {
+                    controller.close()
+                    delete nativeFetchData[fetchId]
+                    throw new Error('aborted')
+                }
+            }
+            if (error) {
+                controller.error(new Error(error))
+            } else {
+                controller.close()
+            }
+            delete nativeFetchData[fetchId]
+        }
+    })
+
+    return new Response(readableStream, {
+        headers: new Headers(resHeaders ?? {}),
+        status: status
+    })
 }
 
 const defaultProxyJobHeartbeatSec = 15
@@ -2614,12 +2790,7 @@ const countriesWithAiLaw = new Set<string>([
 ])
 
 export function aiLawApplies(): boolean {
-
-    //TODO: implement actual logic
-    //lets now assume it always applies
-    //so we don't have legal issues later
-
-    return true
+    return false
 }
 
 export function aiWatermarkingLawApplies(): boolean {

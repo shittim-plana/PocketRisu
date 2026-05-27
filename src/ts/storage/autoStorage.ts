@@ -1,9 +1,11 @@
 import { NodeStorage, type PatchItemResult } from "./nodeStorage"
+import { TauriStorage } from "./tauriStorage"
+import { isAndroidLocalApk } from "../platform"
 
 export class AutoStorage{
     isAccount:boolean = false
 
-    realStorage:NodeStorage
+    realStorage:NodeStorage | TauriStorage
 
     async setItem(key:string, value:Uint8Array, etag?:string):Promise<string|null> {
         await this.realStorage.setItem(key, value, etag)
@@ -26,14 +28,23 @@ export class AutoStorage{
 
     async Init(){
         if(!this.realStorage){
-            console.log("using node storage")
-            this.realStorage = new NodeStorage()
+            if (isAndroidLocalApk) {
+                console.log("using tauri storage (android local apk)")
+                this.realStorage = new TauriStorage()
+            } else {
+                console.log("using node storage")
+                this.realStorage = new NodeStorage()
+            }
         }
     }
 
     async createAuth(): Promise<string> {
         if (!this.realStorage) {
-            this.realStorage = new NodeStorage()
+            if (isAndroidLocalApk) {
+                this.realStorage = new TauriStorage()
+            } else {
+                this.realStorage = new NodeStorage()
+            }
         }
         return this.realStorage.createAuth()
     }

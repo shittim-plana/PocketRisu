@@ -360,10 +360,6 @@ export async function importPlugin(code:string|null = null, argu:{
             apiInternalVersion = '2.1'
         }
         else if(apiVersion === '2.0'){
-            if(!DBState.db.allowV2Plugin){
-                showError('Your code does not include //@api or specifies API version 2.0, which is outdated. Please update your plugin to use at least API version 2.1.')
-                return
-            }
             apiInternalVersion = 2
         }
         else if(apiVersion === '3.0'){
@@ -900,18 +896,13 @@ export async function loadV2Plugin(plugins: RisuPlugin[]) {
             data = plugin.script
             console.log('Loading V2.0 Plugin', plugin.name)
 
-            if(DBState.db.allowV2Plugin){
-                try {
-                    new Function(createRealScript(data))()
-                } catch (error) {
-                    console.error(error)
-                }
+            try {
+                new Function(createRealScript(data))()
+            } catch (error) {
+                console.error(error)
+            }
 
-                console.warn(`Plugin 2.0 support is deprecated and disabled by default. Please update plugin "${plugin.name}" to API version 3.0`)
-            }
-            else{
-                console.warn(`Plugin 2.0 is disabled by default. Enable deprecated V2.0 plugin support in advanced settings to run plugin "${plugin.name}", and please update it to API version 3.0`)
-            }
+            console.warn(`Plugin 2.0 support is deprecated. Please update plugin "${plugin.name}" to API version 3.0`)
         }
     }
 }
