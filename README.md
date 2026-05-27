@@ -5,7 +5,7 @@
 <h1 align="center">PocketRisu — AI Roleplay Chat (Server & Android)</h1>
 
 <p align="center">
-  <strong>English</strong> | <a href="i18n/README.ko.md">한국어</a> | <a href="i18n/README.de.md">Deutsch</a> | <a href="i18n/README.cn.md">简体中文</a> | <a href="i18n/README.es.md">Español</a> | <a href="i18n/README.vi.md">Tiếng Việt</a> | <a href="i18n/README.zh-Hant.md">繁體中文</a>
+  <strong>English</strong> | <a href="i18n/README.ko.md">한국어</a> | <a href="i18n/README.de.md">Deutsch</a> | <a href="i18n/README.es.md">Español</a> | <a href="i18n/README.vi.md">Tiếng Việt</a> | <a href="i18n/README.fr.md">Français</a>
 </p>
 
 <p align="center">
