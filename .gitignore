@@ -31,6 +31,8 @@ src-others/
 *.sw?
 /src-tauri/target/
 /src-tauri/gen/
+*.apk
+*.idsig
 /build/
 pycache/
 test.ts
