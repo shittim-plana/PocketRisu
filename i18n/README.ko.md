@@ -5,7 +5,7 @@
 <h1 align="center">PocketRisu — AI 롤플레이 채팅 (서버 & 안드로이드)</h1>
 
 <p align="center">
-  <a href="../README.md">English</a> | <strong>한국어</strong> | <a href="README.de.md">Deutsch</a> | <a href="README.es.md">Español</a> | <a href="README.vi.md">Tiếng Việt</a> | <a href="README.fr.md">Français</a>
+  <a href="../README.md">English</a> | <strong>한국어</strong> | <a href="README.de.md">Deutsch</a> | <a href="README.es.md">Español</a> | <a href="README.fr.md">Français</a> | <a href="README.it.md">Italiano</a> | <a href="README.ja.md">日本語</a>
 </p>
 
 <p align="center">
@@ -127,6 +127,9 @@ PocketRisu/
 ├── server/                 Node.js 서버 (서버 모드 전용)
 └── dist/                   Vite 빌드 출력 → APK 에셋
 ```
+
+
+기반 템플릿: [tauri-geckoview-template](https://github.com/shittim-plana/tauri-geckoview-template)
 
 
 ## 커뮤니티 & 연락처

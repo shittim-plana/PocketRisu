@@ -5,7 +5,7 @@
 <h1 align="center">PocketRisu — AI Roleplay Chat (Server & Android)</h1>
 
 <p align="center">
-  <strong>English</strong> | <a href="i18n/README.ko.md">한국어</a> | <a href="i18n/README.de.md">Deutsch</a> | <a href="i18n/README.es.md">Español</a> | <a href="i18n/README.vi.md">Tiếng Việt</a> | <a href="i18n/README.fr.md">Français</a>
+  <strong>English</strong> | <a href="i18n/README.ko.md">한국어</a> | <a href="i18n/README.de.md">Deutsch</a> | <a href="i18n/README.es.md">Español</a> | <a href="i18n/README.fr.md">Français</a> | <a href="i18n/README.it.md">Italiano</a> | <a href="i18n/README.ja.md">日本語</a>
 </p>
 
 <p align="center">
@@ -144,6 +144,9 @@ PocketRisu/
 ├── server/                 Node.js server (Server mode only)
 └── dist/                   Vite build output → APK assets
 ```
+
+
+Built on [tauri-geckoview-template](https://github.com/shittim-plana/tauri-geckoview-template) for GeckoView integration.
 
 
 ## Community & Contact

@@ -5,7 +5,7 @@
 <h1 align="center">PocketRisu — Chat RP IA (Serveur & Android)</h1>
 
 <p align="center">
-  <a href="../README.md">English</a> | <a href="README.ko.md">한국어</a> | <a href="README.de.md">Deutsch</a> | <a href="README.es.md">Español</a> | <a href="README.vi.md">Tiếng Việt</a> | <strong>Français</strong>
+  <a href="../README.md">English</a> | <a href="README.ko.md">한국어</a> | <a href="README.de.md">Deutsch</a> | <a href="README.es.md">Español</a> | <strong>Français</strong> | <a href="README.it.md">Italiano</a> | <a href="README.ja.md">日本語</a>
 </p>
 
 <p align="center">
@@ -29,6 +29,19 @@ Telechargez l'APK depuis les [Releases](https://github.com/shittim-plana/PocketR
 - **Tauri 2.0** + **GeckoView 140 ESR** (moteur de navigateur Mozilla)
 - Proxy HTTP natif Rust pour les appels API IA
 - arm64-v8a (aarch64) uniquement
+
+<p align="center">
+  <table>
+    <tr>
+      <td align="center"><img src="../assets/screenshots/screenshot-pc-chat.png" alt="Chat PC" height="420" /></td>
+      <td align="center"><img src="../assets/screenshots/screenshot-mobile-chat.png" alt="Chat mobile" height="420" /></td>
+    </tr>
+    <tr>
+      <td align="center"><b>PC</b></td>
+      <td align="center"><b>Mobile</b></td>
+    </tr>
+  </table>
+</p>
 
 
 ## Documentation
@@ -64,7 +77,9 @@ PocketRisu est derive de [RisuAI](https://github.com/kwaroran/RisuAI) et optimis
 
 ## Architecture
 
-### Mode Serveur
+PocketRisu fonctionne en deux modes. Le frontend est partage ; le backend differe.
+
+### Mode Serveur (PC / Auto-heberge)
 
 ```
 Navigateur ──HTTP──▶ Serveur Node.js ──▶ SQLite DB
@@ -90,6 +105,43 @@ Navigateur ──HTTP──▶ Serveur Node.js ──▶ SQLite DB
 │                                              │
 └──────────────────────────────────────────────┘
 ```
+
+### Flux de donnees — Message de chat
+
+```
+Saisie utilisateur
+  → Svelte UI
+    → invoke('streamed_fetch', { url, headers, body })
+      → Rust: reqwest → Fournisseur IA (OpenAI, Claude, etc.)
+        ← Fragments SSE → emit("streamed_fetch") evenements
+      ← ReadableStream → Rendu de l'interface chat
+    → invoke('chat_content_save', { cha_id, chat_index, data })
+      → SQLite KV Store (sur l'appareil)
+```
+
+### Structure du projet
+
+```
+PocketRisu/
+├── src/                    Frontend Svelte (partage)
+│   └── ts/storage/
+│       ├── autoStorage.ts      Selecteur de mode (Serveur ↔ Tauri)
+│       ├── nodeStorage.ts      Mode serveur : HTTP fetch
+│       └── tauriStorage.ts     Mode Android : Tauri invoke
+├── src-tauri/              Backend Rust Tauri (Android)
+│   ├── src/
+│   │   ├── lib.rs              Point d'entree + enregistrement des commandes
+│   │   ├── commands.rs         13 commandes Tauri
+│   │   └── kv_store.rs         SQLite KV (rusqlite)
+│   └── gen/android/        Overlay GeckoView
+│       └── app/src/main/java/.../
+│           ├── MainActivity.kt     GeckoView + pont IPC
+│           └── AssetServer.kt      Serveur d'assets localhost
+├── server/                 Serveur Node.js (mode serveur uniquement)
+└── dist/                   Sortie build Vite → Assets APK
+```
+
+Base sur [tauri-geckoview-template](https://github.com/shittim-plana/tauri-geckoview-template)
 
 
 ## Communaute & Contact
