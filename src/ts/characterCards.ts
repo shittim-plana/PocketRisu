@@ -18,9 +18,11 @@ import { CharXImporter, CharXSkippableChecker, CharXWriter } from "./process/pro
 import { exportModule, readModule, type RisuModule } from "./process/modules"
 
 
+import { isAndroidLocalApk } from "./platform"
+
 const EXTERNAL_HUB_URL = 'https://sv.risuai.xyz';
 const NIGHTLY_HUB_URL = 'https://nightly.sv.risuai.xyz'
-export const hubURL = '/hub-proxy';
+export const hubURL = isAndroidLocalApk ? EXTERNAL_HUB_URL : '/hub-proxy';
 
 export async function importCharacter() {
     try {
