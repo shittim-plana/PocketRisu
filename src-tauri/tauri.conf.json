@@ -7,7 +7,7 @@
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5174",
     "beforeDevCommand": "pnpm dev",
-    "beforeBuildCommand": "VITE_TARGET=android-local pnpm build"
+    "beforeBuildCommand": "VITE_TARGET=android-local pnpm build && node scripts/android/sync-tauri-assets.mjs"
   },
   "app": {
     "windows": [
