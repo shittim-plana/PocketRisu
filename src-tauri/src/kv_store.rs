@@ -1,13 +1,10 @@
-use rusqlite::{params, Connection};
+use rusqlite::{params, Connection, OptionalExtension};
 use std::path::Path;
 use std::sync::Mutex;
 
 pub struct KvStore {
     conn: Mutex<Connection>,
 }
-
-unsafe impl Send for KvStore {}
-unsafe impl Sync for KvStore {}
 
 impl KvStore {
     pub fn open(data_dir: &Path) -> Result<Self, String> {
@@ -102,5 +99,3 @@ impl KvStore {
         Ok(())
     }
 }
-
-use rusqlite::OptionalExtension;

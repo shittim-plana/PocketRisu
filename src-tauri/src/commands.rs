@@ -1,6 +1,6 @@
 use base64::{engine::general_purpose, Engine as _};
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
@@ -101,26 +101,20 @@ pub async fn streamed_fetch(
         Err(e) => return json!({"success": false, "body": e}).to_string(),
     };
 
+    let decoded_body = if !body.is_empty() {
+        match general_purpose::STANDARD.decode(body.as_bytes()) {
+            Ok(b) => Some(b),
+            Err(e) => return json!({"success": false, "body": format!("base64 decode error: {}", e)}).to_string(),
+        }
+    } else {
+        None
+    };
+
     let client = reqwest::Client::new();
     let builder = match method.as_str() {
-        "POST" => {
-            let decoded = general_purpose::STANDARD
-                .decode(body.as_bytes())
-                .unwrap_or_default();
-            client.post(&url).headers(parsed_headers).body(decoded)
-        }
-        "PUT" => {
-            let decoded = general_purpose::STANDARD
-                .decode(body.as_bytes())
-                .unwrap_or_default();
-            client.put(&url).headers(parsed_headers).body(decoded)
-        }
-        "DELETE" => {
-            let decoded = general_purpose::STANDARD
-                .decode(body.as_bytes())
-                .unwrap_or_default();
-            client.delete(&url).headers(parsed_headers).body(decoded)
-        }
+        "POST" => client.post(&url).headers(parsed_headers).body(decoded_body.unwrap_or_default()),
+        "PUT" => client.put(&url).headers(parsed_headers).body(decoded_body.unwrap_or_default()),
+        "DELETE" => client.delete(&url).headers(parsed_headers).body(decoded_body.unwrap_or_default()),
         _ => client.get(&url).headers(parsed_headers),
     };
 
